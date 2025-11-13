@@ -1,0 +1,17 @@
+[package]
+name = "try_toy_example"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+burn = {version = "0.18.0", features = ["ndarray", "wgpu"]}
+burn-autodiff = "0.18.0"
+burn-ndarray = "0.18.0"
+burn-wgpu = "0.18.0"
+rand = "0.9"
+rand_chacha = "0.9"
+rand_distr = "0.5"
+ndarray = "0.17.1"
+
+[dev-dependencies]
+approx = "0.5"

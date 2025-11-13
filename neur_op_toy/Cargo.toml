@@ -4,3 +4,26 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+rlst = { git = "https://github.com/linalg-rs/rlst", branch = "main"}
+itertools = "0.14"
+num = "0.4"
+rand = "0.9"
+rand_chacha = "0.9"
+rand_distr = "0.5"
+burn = { version = "0.18.0", features = ["ndarray"] }
+
+
+[dev-dependencies]
+approx = "0.5"
+
+[target.'cfg(target_os = "macos")'.dev-dependencies]
+
+[target.'cfg(target_os = "linux")'.dev-dependencies]
+
+
+[build-dependencies]
+
+[features]
+
+[lints.clippy]
+wildcard_imports = "forbid"
