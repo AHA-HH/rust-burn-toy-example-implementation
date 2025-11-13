@@ -1,4 +1,4 @@
-neur_op_toy/
-try_toy_example/target/
+neur_op_toy
+try_toy_example/target
 try_toy_example/Cargo.lock
 timo_chebycheb.jl
