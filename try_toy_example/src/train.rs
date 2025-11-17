@@ -5,7 +5,6 @@ use ndarray::Array2;
 use crate::interp::cheb_1d_interpolate;
 use crate::cheb_points::gen_barycentric_weights;
 
-
 // Function to generate random sample points across Normal distribution on interval [-1,1]
 pub fn gen_collocation_points<B: Backend>(
     device: &B::Device,
@@ -55,6 +54,24 @@ pub fn compute_residual<B: Backend>(
     residuals
 }
 
+// Function to calculate loss using Clenshaw-Curtis method
+pub fn compute_loss<B: Backend>(
+    residuals: &Tensor<B, 2>,
+    weights: &Vec<f32>,
+    device: &B::Device,
+) -> Tensor<B, 1> {
+    // let weight_tensor = Tensor::<B, 2>::from_floats(weights.as_slice(), device)
+    // .reshape([weights.len(), 1]);
+
+    let weight_tensor = Tensor::<B, 1>::from_floats(weights.as_slice(), device)
+    .reshape([weights.len(), 1]);
+
+    let weighted_residuals = residuals.clone().powf_scalar(2.0) * weight_tensor;
+
+    let loss = weighted_residuals.sum();
+
+    loss
+}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -198,4 +215,67 @@ mod tests {
         println!("Residual interpolation shape: {:?}, max |val| = {:.3e}", shape, max_val);
     }
 
+    #[test]
+    fn test_loss_calculation() {
+        type B = NdArray<f32>;
+        let device = <B as Backend>::Device::default();
+
+        let n = 20;
+        let x_cheb = gen_cheb_points(n);
+        let b_weights = gen_barycentric_weights(n);
+    
+        let (_x, d1) = gen_cheb_diff_matrix(n);
+
+        let d2 = get_cheb_diff_matrix_second(&d1);
+        
+        let u_vals: Vec<f32> = x_cheb.clone();
+        let u_vals_f32: Vec<f32> = u_vals.iter().map(|&v| v as f32).collect();
+        
+        let u_pred = Tensor::<B, 1>::from_floats(u_vals_f32.as_slice(), &device)
+            .reshape([n, 1]);
+
+        let m = 50;
+        let x_rand = gen_collocation_points::<B>(&device, m);
+
+        let residuals = compute_residual::<B>(
+            &u_pred,
+            x_cheb.clone(),
+            &d2,
+            &x_rand,
+            b_weights.clone(),
+            &device,
+        );
+   
+        let weights = gen_clenshaw_curtis_weights(m - 1);
+
+        let loss = compute_loss::<B>(&residuals, &weights, &device);
+
+        let loss_val = loss.to_data().to_vec::<f32>().unwrap()[0];
+
+         assert_eq!(
+        loss.dims(),
+        [1],
+        "Loss tensor should have shape [1], got {:?}",
+        loss.dims()
+    );
+
+    // Ensure it's finite and non-negative
+    assert!(
+        loss_val.is_finite() && loss_val >= 0.0,
+        "Loss should be finite and non-negative, got {:.6}",
+        loss_val
+    );
+
+    // The residual-based loss should be small
+    assert!(
+        loss_val < 100.0,
+        "Loss too large ({:.6}) — residual computation may be off",
+        loss_val
+    );
+
+    println!(
+        "Loss test passed: Loss = {:.6} (m={}, n={})",
+        loss_val, m, n
+    );
+    }
 }
