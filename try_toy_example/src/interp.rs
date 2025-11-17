@@ -1,9 +1,9 @@
 // Barycentric interpolation using Chebyshev points in 1D
 pub fn cheb_1d_interpolate(
-    eval_points: Vec<f64>, 
-    values: Vec<f64>, 
-    c_points: Vec<f64>, 
-    c_weights: Vec<f64>) -> Vec<f64> {
+    eval_points: Vec<f32>, 
+    values: Vec<f32>, 
+    c_points: Vec<f32>, 
+    c_weights: Vec<f32>) -> Vec<f32> {
     let npoints = eval_points.len();
     let nnodes = values.len();
 
@@ -20,7 +20,7 @@ pub fn cheb_1d_interpolate(
         for (i, &xeval) in eval_points.iter().enumerate(){
             let diff = xeval - x_j;
             
-            if diff.abs() <= 1e-14 * (1.0_f64.max(xeval.abs())) {
+            if diff.abs() <= 1e-14 * (1.0_f32.max(xeval.abs())) {
                 exact_idx[i] = Some(j);
                 continue;
             }
@@ -46,13 +46,13 @@ pub fn cheb_1d_interpolate(
 
 // Barycentric interpolation using Chebyshev points in 2D
 pub fn cheb_2d_interpolate_tensor(
-    eval_x: Vec<f64>,
-    eval_y: Vec<f64>,
-    values: Vec<Vec<f64>>,
-    c_points_x: Vec<f64>,
-    c_weights_x: Vec<f64>,
-    c_points_y: Vec<f64>,
-    c_weights_y: Vec<f64>) -> Vec<Vec<f64>> {
+    eval_x: Vec<f32>,
+    eval_y: Vec<f32>,
+    values: Vec<Vec<f32>>,
+    c_points_x: Vec<f32>,
+    c_weights_x: Vec<f32>,
+    c_points_y: Vec<f32>,
+    c_weights_y: Vec<f32>) -> Vec<Vec<f32>> {
 
     let nx_eval = eval_x.len();
     let ny_eval = eval_y.len();
@@ -68,7 +68,7 @@ pub fn cheb_2d_interpolate_tensor(
     // assert_eq!(y_weights.len(), ny_nodes);
    
    // for each x, interpolate along y direction
-    let mut temp: Vec<Vec<f64>> = Vec::with_capacity(nx_nodes);
+    let mut temp: Vec<Vec<f32>> = Vec::with_capacity(nx_nodes);
     for jx in 0..nx_nodes {
         let row_vals = values[jx].clone(); 
         let interp_y = cheb_1d_interpolate(
@@ -113,8 +113,8 @@ mod test {
         interp::{cheb_1d_interpolate, cheb_2d_interpolate_tensor}
     };
 
-    fn t3(x: f64) -> f64 { 4.0 * x * x * x - 3.0 * x }
-    fn t4(y: f64) -> f64 { 8.0 * y * y * y * y - 8.0 * y * y + 1.0 }
+    fn t3(x: f32) -> f32 { 4.0 * x * x * x - 3.0 * x }
+    fn t4(y: f32) -> f32 { 8.0 * y * y * y * y - 8.0 * y * y + 1.0 }
 
     #[test]
     fn test_cheb_1d() {
@@ -122,13 +122,13 @@ mod test {
         let nodes = gen_cheb_points(n);
         let weights = gen_barycentric_weights(n);
 
-        let values: Vec<f64> = nodes.iter().copied().map(t3).collect();
+        let values: Vec<f32> = nodes.iter().copied().map(t3).collect();
 
         let m = 50;
 
         let mut rng = ChaCha8Rng::seed_from_u64(42);
 
-        let eval_points: Vec<f64> = (0..m)
+        let eval_points: Vec<f32> = (0..m)
             .map(|_| rng.random_range(-1.0..1.0))
             .collect();
         
@@ -139,14 +139,14 @@ mod test {
             weights.clone(),
         );
 
-        let true_values: Vec<f64> = eval_points.iter().copied().map(t3).collect();
+        let true_values: Vec<f32> = eval_points.iter().copied().map(t3).collect();
 
         let max_error = interp_values.iter()
             .zip(true_values.iter())
             .map(|(&interp, &true_val)| (interp - true_val).abs())
-            .fold(0.0_f64, |a, b| a.max(b));
+            .fold(0.0_f32, |a, b| a.max(b));
 
-        assert!(max_error < 1e-12, "Max 1D interpolation error: {}", max_error);
+        assert!(max_error < 1e-5, "Max 1D interpolation error: {}", max_error);
     }
 
     #[test]
@@ -170,10 +170,10 @@ mod test {
 
         let mut rng = ChaCha8Rng::seed_from_u64(24);
 
-        let eval_x: Vec<f64> = (0..mx)
+        let eval_x: Vec<f32> = (0..mx)
             .map(|_| rng.random_range(-1.0..1.0))
             .collect();
-        let eval_y: Vec<f64> = (0..my)
+        let eval_y: Vec<f32> = (0..my)
             .map(|_| rng.random_range(-1.0..1.0))
             .collect();
 
@@ -187,7 +187,7 @@ mod test {
             lam_y.clone(),
         ); 
 
-        let mut max_error = 0.0_f64;
+        let mut max_error = 0.0_f32;
         for ix in 0..mx {
             for iy in 0..my {
                 let true_val = t3(eval_x[ix]) * t4(eval_y[iy]);
@@ -198,6 +198,6 @@ mod test {
             }
         }
 
-        assert!(max_error < 1e-12, "Max 2D interpolation error: {}", max_error);
+        assert!(max_error < 1e-5, "Max 2D interpolation error: {}", max_error);
     }
 }
