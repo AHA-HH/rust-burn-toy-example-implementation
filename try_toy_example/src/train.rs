@@ -27,32 +27,33 @@ pub fn source_function<B: Backend>(x: &Tensor<B, 2>) -> Tensor<B, 2> {
 }
 
 // Function to compute residual to prepare for loss function
-// pub fn compute_residual<B: Backend>(
-//     u_pred: &Tensor<B, 2>,
-//     x_cheb: Vec<f32>,
-//     d2_matrix: &Array2<f32>,
-//     x_rand: &Tensor<B, 2>,
-//     b_weights: Vec<f32>,
-//     device: &B::Device,
-// ) -> Tensor<B, 2> {
-//     let u_pred_vec = u_pred.to_data().to_vec::<f32>().unwrap();
-//     let uxx_pred_vec = d2_matrix.dot(&ndarray::Array1::from(u_pred_vec));
+pub fn compute_residual<B: Backend>(
+    u_pred: &Tensor<B, 2>,
+    x_cheb: Vec<f32>,
+    d2_matrix: &Array2<f32>,
+    x_rand: &Tensor<B, 2>,
+    b_weights: Vec<f32>,
+    device: &B::Device,
+) -> Tensor<B, 2> {
+    let u_pred_vec = u_pred.to_data().to_vec::<f32>().unwrap();
+    let uxx_pred_vec = d2_matrix.dot(&ndarray::Array1::from(u_pred_vec));
 
-//     let uxx_interp = cheb_1d_interpolate(
-//         x_rand.to_data().to_vec::<f32>().unwrap(), 
-//         uxx_pred_vec.to_vec(), 
-//         x_cheb, 
-//         b_weights
-//     );
+    let uxx_interp = cheb_1d_interpolate(
+        x_rand.to_data().to_vec::<f32>().unwrap(), 
+        uxx_pred_vec.to_vec(), 
+        x_cheb, 
+        b_weights
+    );
 
-//     let f_true = source_function::<B>(&x_rand);
-//     let uxx_interp_tensor = Tensor::<B, 2>::from_floats(&*uxx_interp, device)
-//     .reshape([x_rand.dims()[0], 1]);
+    let f_true = source_function::<B>(&x_rand);
+
+    let uxx_interp_tensor = Tensor::<B, 1>::from_floats(&*uxx_interp, device)
+    .reshape([x_rand.dims()[0], 1]);
    
-//     let residuals = uxx_interp_tensor.neg() - f_true;
+    let residuals = uxx_interp_tensor.neg() - f_true;
 
-//     residuals
-// }
+    residuals
+}
 
 #[cfg(test)]
 mod tests {
@@ -143,56 +144,58 @@ mod tests {
         }
     }
 
-    // #[test]
-    // fn test_residual_calculation() {
-    //     type B = NdArray<f32>;
-    //     let device = <B as Backend>::Device::default();
+    #[test]
+    fn test_residual_calculation() {
+        type B = NdArray<f32>;
+        let device = <B as Backend>::Device::default();
 
-    //     let n = 20;
-    //     let x_cheb = gen_cheb_points(n);
-    //     let b_weights = gen_barycentric_weights(n);
+        let n = 20;
+        let x_cheb = gen_cheb_points(n);
+        let b_weights = gen_barycentric_weights(n);
     
-    //     let (_x, d1) = gen_cheb_diff_matrix(n);
+        let (_x, d1) = gen_cheb_diff_matrix(n);
 
-    //     let d2 = get_cheb_diff_matrix_second(&d1);
+        let d2 = get_cheb_diff_matrix_second(&d1);
         
-    //     let u_vals: Vec<f32> = x_cheb.clone();
-    //     let u_vals_f32: Vec<f32> = u_vals.iter().map(|&v| v as f32).collect();
-
-    //     let u_pred = Tensor::<B, 1>::from_floats(u_vals_f32.as_slice(), &device)
-    //         .reshape([n, 1]);
-    //     // let u_pred = Tensor::<B, 2>::from_floats(u_vals.as_slice(), &device).reshape([n, 1]);
-
-
-    //     let m = 50;
-    //     let x_rand = gen_collocation_points::<B>(&device, m);
-    //     let residuals = compute_residual::<B>(
-    //         &u_pred,
-    //         x_cheb.clone(),
-    //         &d2,
-    //         &x_rand,
-    //         b_weights.clone(),
-    //         &device,
-    //     );
+        let u_vals: Vec<f32> = x_cheb.clone();
+        let u_vals_f32: Vec<f32> = u_vals.iter().map(|&v| v as f32).collect();
         
-    //     let shape = residuals.dims();
-    //     assert_eq!(shape, [m, 1], "Residual tensor shape should be [m, 1]");
+        let u_pred = Tensor::<B, 1>::from_floats(u_vals_f32.as_slice(), &device)
+            .reshape([n, 1]);
+        
+        // let u_pred = Tensor::<B, 2>::from_floats(u_vals.as_slice(), &device).reshape([n, 1]);
 
-    //     // No NaN or Inf values
-    //     let vals = residuals.to_data().to_vec::<f32>().unwrap();
-    //     assert!(
-    //         vals.iter().all(|&v| v.is_finite()),
-    //         "Residual tensor contains NaN or Inf"
-    //     );
 
-    //     // Ensure non-zero output (so not just zeros)
-    //     let max_val = vals.iter().fold(0.0_f32, |acc, &v| acc.max(v.abs()));
-    //     assert!(
-    //         max_val > 0.0,
-    //         "Residual tensor unexpectedly all zeros — interpolation may have failed"
-    //     );
+        let m = 50;
+        let x_rand = gen_collocation_points::<B>(&device, m);
 
-    //     println!("Residual interpolation shape: {:?}, max |val| = {:.3e}", shape, max_val);
-    // }
+        let residuals = compute_residual::<B>(
+            &u_pred,
+            x_cheb.clone(),
+            &d2,
+            &x_rand,
+            b_weights.clone(),
+            &device,
+        );
+
+        let shape = residuals.dims();
+        assert_eq!(shape, [m, 1], "Residual tensor shape should be [m, 1]");
+
+        // No NaN or Inf values
+        let vals = residuals.to_data().to_vec::<f32>().unwrap();
+        assert!(
+            vals.iter().all(|&v| v.is_finite()),
+            "Residual tensor contains NaN or Inf"
+        );
+
+        // Ensure non-zero output
+        let max_val = vals.iter().fold(0.0_f32, |acc, &v| acc.max(v.abs()));
+        assert!(
+            max_val > 0.0,
+            "Residual tensor unexpectedly all zeros — interpolation may have failed"
+        );
+
+        println!("Residual interpolation shape: {:?}, max |val| = {:.3e}", shape, max_val);
+    }
 
 }
