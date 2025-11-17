@@ -5,8 +5,9 @@ mod model;
 mod train;
 
 
-use cheb_points::*;
+// use cheb_points::*;
 // use interp::*;
+use train::*;
 
 use burn::tensor::backend::Backend;     // Backend trait
 use burn_autodiff::Autodiff;            // Autodiff tensor
@@ -17,5 +18,13 @@ use burn::backend::NdArray;             // NdArray backend
 type B = Autodiff<NdArray>;             // for CPU
 
 fn main() {
+    type B = NdArray<f32>;
     let device = <B as Backend>::Device::default();
+    let epochs = 5000;
+    let n = 20;
+    let m = 50;
+    let learning_rate = 0.000001;
+    println!("Running Two-Layer Net");
+    train_model::<B>(device, epochs, n, m, learning_rate);
+    println!("Finished Running Two-Layer Net");
 }

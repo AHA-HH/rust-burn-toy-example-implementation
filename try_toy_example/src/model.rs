@@ -16,9 +16,9 @@ pub struct TwoLayerNet<B: Backend> {
 
 #[derive(Config, Debug)]
 pub struct TwoLayerNetConfig {
-    input_features: usize,
-    hidden_features: usize,
-    output_features: usize,
+    pub input_features: usize,
+    pub hidden_features: usize,
+    pub output_features: usize,
 }
 
 impl TwoLayerNetConfig {

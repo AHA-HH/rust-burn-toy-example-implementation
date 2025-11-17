@@ -1,9 +1,14 @@
 use burn::tensor::backend::Backend;  
 use burn::tensor::Tensor;         
 use burn::tensor::Distribution::Normal;
+use burn::optim::{AdamConfig, Optimizer, GradientsParams};
+use burn_autodiff::Autodiff;
+use burn::module::{Module, AutodiffModule};
 use ndarray::Array2;
 use crate::interp::cheb_1d_interpolate;
-use crate::cheb_points::gen_barycentric_weights;
+use crate::cheb_points::*;
+use crate::model::*;
+use crate::utils::*;
 
 // Function to generate random sample points across Normal distribution on interval [-1,1]
 pub fn gen_collocation_points<B: Backend>(
@@ -72,6 +77,83 @@ pub fn compute_loss<B: Backend>(
 
     loss
 }
+
+// Function to carry out training loop for neural network
+pub fn train_model<B: Backend> (
+    device: B::Device,
+    epochs: usize,
+    n: usize,
+    m: usize,
+    learning_rate: f32, // include an arg for hidden size of layer?
+) {
+
+    let (x_cheb, d1) = gen_cheb_diff_matrix(n);
+    let d2 = get_cheb_diff_matrix_second(&d1);
+    let b_weights = gen_barycentric_weights(n);
+
+    let x_rand = gen_collocation_points::<Autodiff<B>>(&device, m);
+
+    let cc_weights = gen_clenshaw_curtis_weights(m - 1);
+
+    let mut model: TwoLayerNet<Autodiff<B>> = TwoLayerNetConfig {
+        input_features: 1,
+        hidden_features: 20,
+        output_features: 1,
+    }
+    .init(&device);
+
+    let mut optim = AdamConfig::new().init::<Autodiff<B>, TwoLayerNet<Autodiff<B>>>();
+
+    println!("Training Started");
+    for epoch in 0..epochs {
+        let x_tensor = cheb_points_tensor::<Autodiff<B>>(&device, n).reshape([n, 1]);
+
+        let u_pred = model.forward(x_tensor);
+        
+        let residuals = compute_residual::<Autodiff<B>>(
+            &u_pred, 
+            x_cheb.clone(), 
+            &d2, 
+            &x_rand, 
+            b_weights.clone(), 
+            &device,
+        );
+
+        let loss = compute_loss::<Autodiff<B>>(&residuals, &cc_weights, &device);
+
+        let gradients = loss.backward();
+        
+        model = optim.step(
+            learning_rate.into(),
+            model.clone(),
+            GradientsParams::from_grads(gradients, &model),
+        );
+
+        println!("Step {}: Loss: {:.4}", epoch + 1, loss.to_data());
+    }
+
+    println!("Training Finished");
+    println!("Testing Started");
+    let test_x: Vec<f32> = (0..100)
+    .map(|i| -1.0 + 2.0 * (i as f32 / 99.0))
+    .collect();
+
+    let test_input = Tensor::<Autodiff<B>, 1>::from_floats(test_x.as_slice(), &device)
+    .reshape([100, 1]);
+
+    let pred_y = model.forward(test_input.clone());
+
+    println!("x\ty_true\ty_pred");
+    let pred_data = pred_y.to_data().to_vec::<f32>().unwrap();
+
+    for (x, y_pred) in test_x.iter().zip(pred_data.iter()) {
+        let y_true = (std::f32::consts::PI * x).sin();
+        println!("{:.3}\t{:.3}\t{:.3}", x, y_true, y_pred);
+    }
+    println!("Testing Finished")
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
