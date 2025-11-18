@@ -3,21 +3,14 @@ use burn::tensor::backend::Backend;
 
 use crate::cheb_points::gen_cheb_points;
 
-// Function to use generated Chebyshev points as tensors
-pub fn cheb_points_tensor<B: Backend>(device: &B::Device, n: usize) -> Tensor<B, 1> {
-    let points: Vec<f32> = gen_cheb_points(n).into_iter().map(|x| x as f32).collect();
-    // from_floats needs something that converts into TensorData; &slice works
-    Tensor::<B, 1>::from_floats(points.as_slice(), device)
-}
-
 // Function to use tensor Chebyshev points as tensorgrid
-pub fn cheb_tensorgrid<B: burn::tensor::backend::Backend>(
+pub fn cheb_tensorgrid<B: Backend>(
     device: &B::Device,
     nx: usize,
     ny: usize,
 ) -> (Tensor<B, 2>, Tensor<B, 2>) {
-    let x = cheb_points_tensor::<B>(device, nx);
-    let y = cheb_points_tensor::<B>(device, ny);
+    let x = gen_cheb_points::<B>(device, nx);
+    let y = gen_cheb_points::<B>(device, ny);
 
     // X, Y each shape [ny, nx]
     let x_grid = x.clone().unsqueeze_dim(0).repeat(&[ny, 1]);        // replicate x across rows
@@ -29,29 +22,9 @@ pub fn cheb_tensorgrid<B: burn::tensor::backend::Backend>(
 #[cfg(test)]
 mod tests {
     use burn::backend::NdArray;
-    use super::{cheb_points_tensor, cheb_tensorgrid};
+    use super::cheb_tensorgrid;
 
     type B = NdArray<f32>;
-
-    #[test]
-    fn test_cheb_points_tensor() {
-        let device = <B as burn::tensor::backend::Backend>::Device::default();
-        let n = 5;
-        let t = cheb_points_tensor::<B>(&device, n);
-
-        // Check shape
-        assert_eq!(t.dims(), [n], "Tensor shape should be [n]");
-
-        // Convert to data
-        let data = t.to_data().convert::<f32>().to_vec().expect("Failed to convert tensor to Vec");
-        assert_eq!(data.len(), n, "Tensor should have n elements");
-
-        // Check that the first and last points are near ±1
-        let first: f32 = data[0];
-        let last: f32 = data[n - 1];
-        assert!((first.abs() - 1.0).abs() < 1e-6, "First Chebyshev point not near ±1");
-        assert!((last.abs() - 1.0).abs() < 1e-6, "Last Chebyshev point not near ±1");
-    }
 
     #[test]
     fn test_cheb_tensorgrid() {
