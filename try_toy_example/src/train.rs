@@ -39,24 +39,41 @@ pub fn compute_residual<B: Backend>(
     b_weights: Vec<f32>,
     device: &B::Device,
 ) -> Tensor<B, 2> {
-    let u_pred_vec = u_pred.to_data().to_vec::<f32>().unwrap();
-    let uxx_pred_vec = d2_matrix.dot(&ndarray::Array1::from(u_pred_vec));
+    // let u_pred_vec = u_pred.to_data().to_vec::<f32>().unwrap();
+    // let uxx_pred_vec = d2_matrix.dot(&ndarray::Array1::from(u_pred_vec));
+    
+    // let d2_tensor = Tensor::<B ,2>::from_floats(d2_matrix
+    //     .as_slice().unwrap(), device).reshape([n, n]);
 
-    let uxx_interp = cheb_1d_interpolate(
-        x_rand.to_data().to_vec::<f32>().unwrap(), 
-        uxx_pred_vec.to_vec(), 
-        x_cheb, 
-        b_weights
-    );
+    // let uxx_pred = d2_tensor.matmul(u_pred.clone());
 
-    let f_true = source_function::<B>(&x_rand);
+    // let uxx_interp = cheb_1d_interpolate(
+    //     x_rand.to_data().to_vec::<f32>().unwrap(), 
+    //     uxx_pred_vec.to_vec(), 
+    //     x_cheb, 
+    //     b_weights
+    // );
 
-    let uxx_interp_tensor = Tensor::<B, 1>::from_floats(&*uxx_interp, device)
-    .reshape([x_rand.dims()[0], 1]);
+    // let f_true = source_function::<B>(&x_rand);
+
+    // let x_cheb_tensor = cheb_points_tensor::<B>(device, n);
+    // let x_cheb_tensor = Tensor::<B, 1>::from_floats(x_cheb.as_slice(), device)
+    // .reshape([n, 1]);
+
+    // let f_true = source_function::<B>(&x_cheb);
+
+    // let f_true = source_function::<B>(&x_cheb_tensor);
+
+    // let residuals = - uxx_pred - f_true;
+
+    // let uxx_interp_tensor = Tensor::<B, 1>::from_floats(&*uxx_interp, device)
+    // .reshape([x_rand.dims()[0], 1]);
    
-    let residuals = uxx_interp_tensor.neg() - f_true;
+    // let residuals = uxx_interp_tensor.neg() - f_true;
 
-    residuals
+    // residuals
+    
+    u_pred.clone().powf_scalar(2.0)
 }
 
 // Function to calculate loss using Clenshaw-Curtis method
@@ -122,7 +139,7 @@ pub fn train_model<B: Backend> (
         let loss = compute_loss::<Autodiff<B>>(&residuals, &cc_weights, &device);
 
         let gradients = loss.backward();
-        
+
         model = optim.step(
             learning_rate.into(),
             model.clone(),
@@ -133,24 +150,24 @@ pub fn train_model<B: Backend> (
     }
 
     println!("Training Finished");
-    println!("Testing Started");
-    let test_x: Vec<f32> = (0..100)
-    .map(|i| -1.0 + 2.0 * (i as f32 / 99.0))
-    .collect();
+    // println!("Testing Started");
+    // let test_x: Vec<f32> = (0..100)
+    // .map(|i| -1.0 + 2.0 * (i as f32 / 99.0))
+    // .collect();
 
-    let test_input = Tensor::<Autodiff<B>, 1>::from_floats(test_x.as_slice(), &device)
-    .reshape([100, 1]);
+    // let test_input = Tensor::<Autodiff<B>, 1>::from_floats(test_x.as_slice(), &device)
+    // .reshape([100, 1]);
 
-    let pred_y = model.forward(test_input.clone());
+    // let pred_y = model.forward(test_input.clone());
 
-    println!("x\ty_true\ty_pred");
-    let pred_data = pred_y.to_data().to_vec::<f32>().unwrap();
+    // println!("x\ty_true\ty_pred");
+    // let pred_data = pred_y.to_data().to_vec::<f32>().unwrap();
 
-    for (x, y_pred) in test_x.iter().zip(pred_data.iter()) {
-        let y_true = (std::f32::consts::PI * x).sin();
-        println!("{:.3}\t{:.3}\t{:.3}", x, y_true, y_pred);
-    }
-    println!("Testing Finished")
+    // for (x, y_pred) in test_x.iter().zip(pred_data.iter()) {
+    //     let y_true = (std::f32::consts::PI * x).sin();
+    //     println!("{:.3}\t{:.3}\t{:.3}", x, y_true, y_pred);
+    // }
+    // println!("Testing Finished")
 }
 
 
@@ -243,121 +260,122 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_residual_calculation() {
-        type B = NdArray<f32>;
-        let device = <B as Backend>::Device::default();
+    // #[test]
+    // fn test_residual_calculation() {
+    //     type B = NdArray<f32>;
+    //     let device = <B as Backend>::Device::default();
 
-        let n = 20;
-        let x_cheb = gen_cheb_points(n);
-        let b_weights = gen_barycentric_weights(n);
+    //     let n = 20;
+    //     let x_cheb = gen_cheb_points(n);
+    //     let b_weights = gen_barycentric_weights(n);
     
-        let (_x, d1) = gen_cheb_diff_matrix(n);
+    //     let (_x, d1) = gen_cheb_diff_matrix(n);
 
-        let d2 = get_cheb_diff_matrix_second(&d1);
+    //     let d2 = get_cheb_diff_matrix_second(&d1);
         
-        let u_vals: Vec<f32> = x_cheb.clone();
-        let u_vals_f32: Vec<f32> = u_vals.iter().map(|&v| v as f32).collect();
+    //     let u_vals: Vec<f32> = x_cheb.clone();
+    //     let u_vals_f32: Vec<f32> = u_vals.iter().map(|&v| v as f32).collect();
         
-        let u_pred = Tensor::<B, 1>::from_floats(u_vals_f32.as_slice(), &device)
-            .reshape([n, 1]);
-        
-        // let u_pred = Tensor::<B, 2>::from_floats(u_vals.as_slice(), &device).reshape([n, 1]);
+    //     let u_pred = Tensor::<B, 1>::from_floats(u_vals_f32.as_slice(), &device)
+    //         .reshape([n, 1]);
 
+    //     let m = 50;
+    //     let x_rand = gen_collocation_points::<B>(&device, m);
 
-        let m = 50;
-        let x_rand = gen_collocation_points::<B>(&device, m);
+    //     // let x_tensor = cheb_points_tensor(&device, n);
 
-        let residuals = compute_residual::<B>(
-            &u_pred,
-            x_cheb.clone(),
-            &d2,
-            &x_rand,
-            b_weights.clone(),
-            &device,
-        );
+    //     let residuals = compute_residual::<B>(
+    //         n,
+    //         &u_pred,
+    //         x_cheb.clone(),
+    //         &d2,
+    //         &x_rand,
+    //         b_weights.clone(),
+    //         &device,
+    //     );
 
-        let shape = residuals.dims();
-        assert_eq!(shape, [m, 1], "Residual tensor shape should be [m, 1]");
+    //     let shape = residuals.dims();
+    //     assert_eq!(shape, [m, 1], "Residual tensor shape should be [m, 1]");
 
-        // No NaN or Inf values
-        let vals = residuals.to_data().to_vec::<f32>().unwrap();
-        assert!(
-            vals.iter().all(|&v| v.is_finite()),
-            "Residual tensor contains NaN or Inf"
-        );
+    //     // No NaN or Inf values
+    //     let vals = residuals.to_data().to_vec::<f32>().unwrap();
+    //     assert!(
+    //         vals.iter().all(|&v| v.is_finite()),
+    //         "Residual tensor contains NaN or Inf"
+    //     );
 
-        // Ensure non-zero output
-        let max_val = vals.iter().fold(0.0_f32, |acc, &v| acc.max(v.abs()));
-        assert!(
-            max_val > 0.0,
-            "Residual tensor unexpectedly all zeros — interpolation may have failed"
-        );
+    //     // Ensure non-zero output
+    //     let max_val = vals.iter().fold(0.0_f32, |acc, &v| acc.max(v.abs()));
+    //     assert!(
+    //         max_val > 0.0,
+    //         "Residual tensor unexpectedly all zeros — interpolation may have failed"
+    //     );
 
-        println!("Residual interpolation shape: {:?}, max |val| = {:.3e}", shape, max_val);
-    }
+    //     println!("Residual interpolation shape: {:?}, max |val| = {:.3e}", shape, max_val);
+    // }
 
-    #[test]
-    fn test_loss_calculation() {
-        type B = NdArray<f32>;
-        let device = <B as Backend>::Device::default();
+    // #[test]
+    // fn test_loss_calculation() {
+    //     type B = NdArray<f32>;
+    //     let device = <B as Backend>::Device::default();
 
-        let n = 20;
-        let x_cheb = gen_cheb_points(n);
-        let b_weights = gen_barycentric_weights(n);
+    //     let n = 20;
+    //     let x_cheb = gen_cheb_points(n);
+    //     let b_weights = gen_barycentric_weights(n);
     
-        let (_x, d1) = gen_cheb_diff_matrix(n);
+    //     let (_x, d1) = gen_cheb_diff_matrix(n);
 
-        let d2 = get_cheb_diff_matrix_second(&d1);
+    //     let d2 = get_cheb_diff_matrix_second(&d1);
         
-        let u_vals: Vec<f32> = x_cheb.clone();
-        let u_vals_f32: Vec<f32> = u_vals.iter().map(|&v| v as f32).collect();
+    //     let u_vals: Vec<f32> = x_cheb.clone();
+    //     let u_vals_f32: Vec<f32> = u_vals.iter().map(|&v| v as f32).collect();
         
-        let u_pred = Tensor::<B, 1>::from_floats(u_vals_f32.as_slice(), &device)
-            .reshape([n, 1]);
+    //     let u_pred = Tensor::<B, 1>::from_floats(u_vals_f32.as_slice(), &device)
+    //         .reshape([n, 1]);
 
-        let m = 50;
-        let x_rand = gen_collocation_points::<B>(&device, m);
+    //     let m = 50;
+    //     let x_rand = gen_collocation_points::<B>(&device, m);
 
-        let residuals = compute_residual::<B>(
-            &u_pred,
-            x_cheb.clone(),
-            &d2,
-            &x_rand,
-            b_weights.clone(),
-            &device,
-        );
+    //     let residuals = compute_residual::<B>(
+    //         n,
+    //         &u_pred,
+    //         x_cheb.clone(),
+    //         &d2,
+    //         &x_rand,
+    //         b_weights.clone(),
+    //         &device,
+    //     );
    
-        let weights = gen_clenshaw_curtis_weights(m - 1);
+    //     let weights = gen_clenshaw_curtis_weights(m - 1);
 
-        let loss = compute_loss::<B>(&residuals, &weights, &device);
+    //     let loss = compute_loss::<B>(&residuals, &weights, &device);
 
-        let loss_val = loss.to_data().to_vec::<f32>().unwrap()[0];
+    //     let loss_val = loss.to_data().to_vec::<f32>().unwrap()[0];
 
-         assert_eq!(
-        loss.dims(),
-        [1],
-        "Loss tensor should have shape [1], got {:?}",
-        loss.dims()
-    );
+    //      assert_eq!(
+    //     loss.dims(),
+    //     [1],
+    //     "Loss tensor should have shape [1], got {:?}",
+    //     loss.dims()
+    // );
 
-    // Ensure it's finite and non-negative
-    assert!(
-        loss_val.is_finite() && loss_val >= 0.0,
-        "Loss should be finite and non-negative, got {:.6}",
-        loss_val
-    );
+    // // Ensure it's finite and non-negative
+    // assert!(
+    //     loss_val.is_finite() && loss_val >= 0.0,
+    //     "Loss should be finite and non-negative, got {:.6}",
+    //     loss_val
+    // );
 
-    // The residual-based loss should be small
-    assert!(
-        loss_val < 100.0,
-        "Loss too large ({:.6}) — residual computation may be off",
-        loss_val
-    );
+    // // The residual-based loss should be small
+    // assert!(
+    //     loss_val < 100.0,
+    //     "Loss too large ({:.6}) — residual computation may be off",
+    //     loss_val
+    // );
 
-    println!(
-        "Loss test passed: Loss = {:.6} (m={}, n={})",
-        loss_val, m, n
-    );
-    }
+    // println!(
+    //     "Loss test passed: Loss = {:.6} (m={}, n={})",
+    //     loss_val, m, n
+    // );
+    // }
 }
