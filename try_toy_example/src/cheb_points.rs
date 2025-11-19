@@ -54,6 +54,7 @@ pub fn gen_clenshaw_curtis_weights<B: Backend>(device: &B::Device, n: usize) -> 
 }
 
 // Function to generate Chebyshev differentiation matrix; Reference: Spectral Methods in MATLAB Tregethen Ch.6 p.53
+// maybe just use descending points, if this becomes too much of a pain to track
 pub fn gen_cheb_diff_matrix<B: Backend>(device: &B::Device, x: &Tensor<B, 1>) -> Tensor<B, 2> {
     let x_vec = x.to_data().to_vec::<f32>().unwrap();
     let n = x_vec.len();

@@ -10,17 +10,6 @@
 // use crate::model::*;
 // use crate::utils::*;
 
-// // Function to generate random sample points across Normal distribution on interval [-1,1]
-// pub fn gen_collocation_points<B: Backend>(
-//     device: &B::Device,
-//     m: usize,
-// ) -> Tensor<B, 2> {
-//     Tensor::<B, 2>::random(
-//         [m, 1],
-//         Normal(0.0, 1.0),
-//         device,
-//     ).clamp(-1.0, 1.0)
-// }
 
 // // Function to force a function to learn, in this case u(x) = sin(pi * x)
 // pub fn source_function<B: Backend>(x: &Tensor<B, 2>) -> Tensor<B, 2> {
