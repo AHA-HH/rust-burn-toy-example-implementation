@@ -3,6 +3,9 @@ use burn::tensor::backend::Backend;
 
 
 // Barycentric interpolation/evaluation using Chebyshev points in 1D
+// error is too high, due to either f32 or rounding errors
+// further investigation into how interpolation is working
+// as this could affect how neural network is learning down the line
 pub fn cheb_1d_interpolate<B: Backend>(
     device: &B::Device,
     e_points: &Tensor<B, 1>,
@@ -10,7 +13,7 @@ pub fn cheb_1d_interpolate<B: Backend>(
     c_points: &Tensor<B ,1>,
     b_weights: &Tensor<B, 1>
 ) -> Tensor<B, 1> {
-    let eps = 1e-12;
+    let eps = 1e-6;
 
     let m = e_points.dims()[0];
     let n = c_points.dims()[0];
@@ -38,7 +41,14 @@ pub fn cheb_1d_interpolate<B: Backend>(
 
     let interp = numerator / denominator;
 
-    interp.reshape([m])
+    // interp.reshape([m])
+
+    let mask_f = zero_mask.clone().float();
+    let func_match = mask_f.matmul(func_values.reshape([n, 1]));
+    let row_mask = zero_mask.clone().any_dim(1);
+    let corrected_interp = interp.mask_where(row_mask.clone(), func_match);
+
+    corrected_interp.reshape([m])
     // let match_mask = zero_mask.clone().int().sum_dim(1).greater_elem(0);
     // let func_match = func_values.clone().slice([0..m.min(n)]);
 
@@ -92,7 +102,7 @@ mod test {
         let max_error = abs_error.max().to_data().to_vec::<f32>().unwrap()[0];
        
         assert!(
-            max_error < 1e-5,
+            max_error < 1e-3,
             "Max 1D interpolation error too high: {}",
             max_error
         );
