@@ -1,3 +1,16 @@
+use burn_tensor::backend::Backend;
+use burn_tensor::{Tensor, Shape, Bool};
+
+fn example<B: Backend>() {
+  let device = B::Device::default();
+  let tensor = Tensor::<B, 2>::from_data([[1.0, -2.0, 3.0], [5.0, 9.0, 6.0]], &device);
+  let mask = Tensor::<B, 2, Bool>::from_data([[true, false, true], [false, true, false]], &device);
+  let value = Tensor::<B, 2>::from_data([[2.0, 3.0, 4.0], [1.0, 2.0, 3.0]], &device);
+  let tensor = tensor.mask_where(mask, value);
+  println!("{tensor}");
+  // [[2.0, -2.0, 4.0], [5.0, 2.0, 6.0]]
+}
+
 pub fn cheb_1d_interpolate<B: Backend>(
     device: &B::Device,
     e_points: &Tensor<B, 1>,

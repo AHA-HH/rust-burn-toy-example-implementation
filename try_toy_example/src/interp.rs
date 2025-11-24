@@ -1,5 +1,6 @@
-use burn::tensor::Tensor;
+use burn::tensor::{Tensor, Shape, Bool};
 use burn::tensor::backend::Backend;
+
 
 // Barycentric interpolation/evaluation using Chebyshev points in 1D
 pub fn cheb_1d_interpolate<B: Backend>(
@@ -19,11 +20,14 @@ pub fn cheb_1d_interpolate<B: Backend>(
 
     let diff = eval_points.clone() - cheb_points.clone();
 
-    // Need to figure out a way to catch the 0 values produced by exact matches, to stop it blowing up
-    // one way could be to resort to a for loop but i dont know if tensors support this behaviour
-    // moving away from the tensor type to a vector type is not possible or we'll break the flow needed for the neural network to learn
+    let zero_mask = diff.clone().abs().lower_equal_elem(eps);
+    
+    let ones_data = vec![1.0; m * n];
+    let ones_tensor = Tensor::<B, 1>::from_floats(&*ones_data, device).reshape([m, n]);
 
-    let inv_diff = diff.recip();
+    let safe_diff = diff.clone().mask_where(zero_mask.clone(), ones_tensor);  
+
+    let inv_diff = safe_diff.clone().recip();
 
     let bary_weights = b_weights.clone().reshape([1, n]);
     let func_values = f_values.clone().reshape([1, n]);
@@ -35,6 +39,12 @@ pub fn cheb_1d_interpolate<B: Backend>(
     let interp = numerator / denominator;
 
     interp.reshape([m])
+    // let match_mask = zero_mask.clone().int().sum_dim(1).greater_elem(0);
+    // let func_match = func_values.clone().slice([0..m.min(n)]);
+
+    // let corrected_interp = interp.mask_where(match_mask, func_match);
+
+    // corrected_interp.reshape([m])
 }
 
 #[cfg(test)]
