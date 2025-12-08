@@ -18,13 +18,13 @@ use burn::backend::NdArray;             // NdArray backend
 type B = Autodiff<NdArray>;             // for CPU
 
 fn main() {
-    // type B = NdArray<f32>;
-    // let device = <B as Backend>::Device::default();
-    // let epochs = 500;
-    // let n = 100;
-    // let m = 100;
-    // let learning_rate = 0.00001;
-    // println!("Running Two-Layer Net");
-    // train_model::<B>(device, epochs, n, m, learning_rate);
-    // println!("Finished Running Two-Layer Net");
+    type B = NdArray<f32>;
+    let device = <B as Backend>::Device::default();
+    let epochs = 5000;
+    let n = 100;
+    let m = 200;
+    let learning_rate = 0.001;
+    println!("Running Two-Layer Net");
+    train_model::<B>(device, epochs, n, m, learning_rate);
+    println!("Finished Running Two-Layer Net");
 }
