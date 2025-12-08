@@ -23,8 +23,9 @@ fn main() {
     let epochs = 5000;
     let n = 100;
     let m = 200;
-    let learning_rate = 0.001;
+    let hidden_layer_size = 20;
+    let learning_rate = 0.0001;
     println!("Running Two-Layer Net");
-    train_model::<B>(device, epochs, n, m, learning_rate);
+    train_model::<B>(device, epochs, n, m, hidden_layer_size, learning_rate);
     println!("Finished Running Two-Layer Net");
 }

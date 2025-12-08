@@ -44,10 +44,15 @@ impl TwoLayerNetConfig {
 impl<B: Backend> TwoLayerNet<B> {
     pub fn forward(&self, input: Tensor<B, 1>) -> Tensor<B, 1> {
         let n = input.dims()[0];
-        let input_reshaped = input.reshape([n, 1]);
+        let input_reshaped = input.clone().reshape([n, 1]);
         let x = self.linear1.forward(input_reshaped);
         let x = self.activation.forward(x);
         let x = self.linear2.forward(x);
-	    x.reshape([n])
+	    let raw_output = x.reshape([n]);
+
+        let enforced_output = (Tensor::<B, 1>::ones([n], &raw_output.device()) 
+        - input.clone().powf_scalar(2.0)) * raw_output;
+
+        enforced_output
     }
 }

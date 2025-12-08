@@ -66,12 +66,13 @@ pub fn compute_loss<B: Backend>(
     loss
 }
 
-// Function to carry out training loop for neural network, include an arg for hidden size of layer?
+// Function to carry out training loop for neural network
 pub fn train_model<B: Backend> (
     device: B::Device,
     epochs: usize,
     n: usize,
     m: usize,
+    hidden_layer_size: usize,
     learning_rate: f32, 
 ) {
     let x_cheb = gen_cheb_points::<Autodiff<B>>(&device, n);
@@ -114,7 +115,11 @@ pub fn train_model<B: Backend> (
             GradientsParams::from_grads(gradients, &model),
         );
 
-        println!("Step {}: Loss: {:.4}", epoch + 1, loss.to_data());
+        if epoch % 100 == 0 {
+            let loss_value = loss.to_data().to_vec::<f32>().unwrap()[0];
+            println!("Epoch {:>5} Loss = {:.6}", epoch, loss_value);
+        }
+        // println!("Step {}: Loss: {:.4}", epoch + 1, loss.to_data());
     }
 
     println!("Training Finished");
