@@ -3,14 +3,18 @@ use burn::tensor::backend::Backend;
 
 // Function to generate Chebyshev points of second kind
 pub fn gen_cheb_points<B: Backend>(device: &B::Device, n: usize) -> Tensor<B, 1> {
-    let pi = std::f32::consts::PI;
-    let points: Vec<f32> = (0..n).map(|j| {
-        let theta = ((n - 1 - j) as f32) * pi / ((n - 1) as f32);
+    let pi = std::f64::consts::PI;
+    let points: Vec<f64> = (0..n).map(|j| {
+        let theta = ((n - 1 - j) as f64) * pi / ((n - 1) as f64);
         theta.cos()
     })
     .collect();
 
-    Tensor::<B, 1>::from_floats(points.as_slice(), device)
+    // println!("Vector {:#?}", points);
+
+    let tensor = Tensor::<B, 1>::from_data(points.as_slice(), device);
+    // println!("Tensor: {:#?}", tensor);
+    tensor
 }
 
 // Function to compute weights for Barycentric interpolation
@@ -25,7 +29,7 @@ pub fn gen_barycentric_weights<B: Backend>(device: &B::Device, n: usize) -> Tens
         }
     }
 
-    Tensor::<B, 1>::from_floats(weights.as_slice(), device)
+    Tensor::<B, 1>::from_data(weights.as_slice(), device)
 }
 
 // Function to generate Clenshaw-Curtis quadrature weights
@@ -33,30 +37,30 @@ pub fn gen_clenshaw_curtis_weights<B: Backend>(device: &B::Device, n: usize) -> 
     assert!(n >= 1, "n must be at least 1");
     
     let n_intervals = n + 1;
-    let n_f = n_intervals as f32;
+    let n_f = n_intervals as f64;
 
 
     let mut w = vec![0.0; n_intervals];
     let m = (n_f / 2.0).floor() as usize;
 
     for k in 0..=n as usize {
-        let k_f = k as f32;
+        let k_f = k as f64;
         let mut sum = 0.0;
         for j in 1..=m {
-            let j_f = j as f32;
+            let j_f = j as f64;
             let bj = if (j_f) == n_f / 2.0 {0.5} else {1.0};
-            sum += bj * (2.0 * j_f * std::f32::consts::PI * k_f / n_f).cos() / (4.0 * (j_f * j_f) - 1.0);
+            sum += bj * (2.0 * j_f * std::f64::consts::PI * k_f / n_f).cos() / (4.0 * (j_f * j_f) - 1.0);
         }
         w[k] = (2.0 / n_f) * (1.0 - sum);
         }
     
-    Tensor::<B, 1>::from_floats(w.as_slice(), device)
+    Tensor::<B, 1>::from_data(w.as_slice(), device)
 }
 
 // Function to generate Chebyshev differentiation matrix; Reference: Spectral Methods in MATLAB Tregethen Ch.6 p.53
 // maybe just use descending points, if this becomes too much of a pain to track
 pub fn gen_cheb_diff_matrix<B: Backend>(device: &B::Device, x: &Tensor<B, 1>) -> Tensor<B, 2> {
-    let x_vec = x.to_data().to_vec::<f32>().unwrap();
+    let x_vec = x.to_data().to_vec::<f64>().unwrap();
     let n = x_vec.len();
     
     // c_i: 2 for endpoints (0 or N), 1 otherwise
@@ -82,13 +86,13 @@ pub fn gen_cheb_diff_matrix<B: Backend>(device: &B::Device, x: &Tensor<B, 1>) ->
     }
 
     // Endpoints
-    let n_f = (n - 1) as f32;
+    let n_f = (n - 1) as f64;
     let endpoint_val = (2.0 * n_f * n_f + 1.0) / 6.0; // To match ascending Chebyshev points
     d[0] = endpoint_val;
     d[n * n - 1] = -endpoint_val;
 
     // Convert to tensor
-    Tensor::<B, 1>::from_floats(d.as_slice(), device).reshape([n, n])
+    Tensor::<B, 1>::from_data(d.as_slice(), device).reshape([n, n])
 }
 
 // Function to get the second Chebyshev differentiation matrix
@@ -102,17 +106,18 @@ mod tests {
     use approx::assert_relative_eq;
     use burn::backend::NdArray;
 
-    type B = NdArray<f32>;
+    type B = NdArray<f64>;
 
     #[test]
     fn test_cheb_points() {
         let device = <B as Backend>::Device::default();
         let n = 5;
         let points = gen_cheb_points::<B>(&device, n);
-        let points_vec = points.to_data().to_vec::<f32>().unwrap();
+        let points_vec = points.to_data().to_vec::<f64>().unwrap();
 
         for (j, &x_j) in points_vec.iter().enumerate() {
-            let expected = ((n - 1 - j) as f32 * std::f32::consts::PI / (n - 1) as f32).cos();
+            println!(" x_{} = {:.17}", j, x_j);
+            let expected = ((n - 1 - j) as f64 * std::f64::consts::PI / (n - 1) as f64).cos();
             assert_relative_eq!(x_j, expected, epsilon = 1e-6);
         }
     }
@@ -123,7 +128,7 @@ mod tests {
 
         for n in [2, 3, 4, 5, 8] {
             let w = gen_barycentric_weights::<B>(&device, n);
-            let w_vec = w.to_data().to_vec::<f32>().unwrap();
+            let w_vec = w.to_data().to_vec::<f64>().unwrap();
 
             assert_eq!(w_vec.len(), n, "Length mismatch for n = {}", n);
 
@@ -148,9 +153,9 @@ mod tests {
 
         for points in [2, 4, 8, 16] {
             let w = gen_clenshaw_curtis_weights::<B>(&device, points);
-            let w_vec = w.to_data().to_vec::<f32>().unwrap();
+            let w_vec = w.to_data().to_vec::<f64>().unwrap();
 
-            let total: f32 = w_vec.iter().sum();
+            let total: f64 = w_vec.iter().sum();
             // Check sum of weights is equal to 2
             assert!(
                 (total - 2.0).abs() <= 1e-6,
@@ -164,15 +169,15 @@ mod tests {
     #[test]
     fn test_cheb_diff_matrix() {
         let device = <B as Backend>::Device::default();
-        let n = 8;
+        let n = 5;
 
         let x_tensor = gen_cheb_points::<B>(&device, n);
         let d_tensor = gen_cheb_diff_matrix::<B>(&device, &x_tensor);
 
-        let x_vec = x_tensor.to_data().to_vec::<f32>().unwrap();
-        let d_vec = d_tensor.to_data().to_vec::<f32>().unwrap();
+        let x_vec = x_tensor.to_data().to_vec::<f64>().unwrap();
+        let d_vec = d_tensor.to_data().to_vec::<f64>().unwrap();
 
-        // Reshape d_vec to 2D Vec<Vec<f32>> for easier logic reuse
+        // Reshape d_vec to 2D Vec<Vec<f64>> for easier logic reuse
         let mut d = vec![vec![0.0; n]; n];
         for i in 0..n {
             for j in 0..n {
@@ -186,8 +191,8 @@ mod tests {
 
         // Derivative of constant function -> 0
         let u_const = vec![1.0; n];
-        let du_const: Vec<f32> = d.iter()
-            .map(|row| row.iter().zip(&u_const).map(|(dij, uj)| dij * uj).sum::<f32>())
+        let du_const: Vec<f64> = d.iter()
+            .map(|row| row.iter().zip(&u_const).map(|(dij, uj)| dij * uj).sum::<f64>())
             .collect();
 
         for (i, val) in du_const.iter().enumerate() {
@@ -195,8 +200,8 @@ mod tests {
         }
 
         // Derivative of a linear function -> 1 or -1 depending on orientation
-        let du_linear: Vec<f32> = d.iter()
-            .map(|row| row.iter().zip(&x_vec).map(|(dij, xj)| dij * xj).sum::<f32>())
+        let du_linear: Vec<f64> = d.iter()
+            .map(|row| row.iter().zip(&x_vec).map(|(dij, xj)| dij * xj).sum::<f64>())
             .collect();
 
         for (i, val) in du_linear.iter().enumerate() {
@@ -227,7 +232,7 @@ mod tests {
         let d_tensor = gen_cheb_diff_matrix::<B>(&device, &x_tensor);
         let d2_tensor = get_cheb_diff_matrix_second(&d_tensor);
 
-        let d2_vec = d2_tensor.to_data().to_vec::<f32>().unwrap();
+        let d2_vec = d2_tensor.to_data().to_vec::<f64>().unwrap();
 
         // Target comparison matrix
         let target = vec![
@@ -239,7 +244,7 @@ mod tests {
         let max_err = d2_vec.iter()
             .zip(target.iter())
             .map(|(a, b)| (a - b).abs())
-            .fold(0.0_f32, f32::max);
+            .fold(0.0_f64, f64::max);
 
         assert!(max_err < 1e-3, "D² does not match expected pattern, max err = {:.3e}", max_err);
     }

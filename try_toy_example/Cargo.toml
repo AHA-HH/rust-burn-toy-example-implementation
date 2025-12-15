@@ -12,6 +12,7 @@ rand = "0.9"
 rand_chacha = "0.9"
 rand_distr = "0.5"
 ndarray = "0.17.1"
+plotters = "0.3.7"
 
 [dev-dependencies]
 approx = "0.5"

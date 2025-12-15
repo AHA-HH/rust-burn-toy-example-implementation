@@ -18,7 +18,7 @@ use burn::backend::NdArray;             // NdArray backend
 type B = Autodiff<NdArray>;             // for CPU
 
 fn main() {
-    type B = NdArray<f32>;
+    type B = NdArray<f64>;
     let device = <B as Backend>::Device::default();
     let epochs = 5000;
     let n = 100;

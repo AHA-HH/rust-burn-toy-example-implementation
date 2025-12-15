@@ -41,6 +41,7 @@ impl TwoLayerNetConfig {
 //     }
 // }
 
+// Override with Padding, change to n - 2
 impl<B: Backend> TwoLayerNet<B> {
     pub fn forward(&self, input: Tensor<B, 1>) -> Tensor<B, 1> {
         let n = input.dims()[0];
@@ -50,8 +51,7 @@ impl<B: Backend> TwoLayerNet<B> {
         let x = self.linear2.forward(x);
 	    let raw_output = x.reshape([n]);
 
-        let enforced_output = (Tensor::<B, 1>::ones([n], &raw_output.device()) 
-        - input.clone().powf_scalar(2.0)) * raw_output;
+ 
 
         enforced_output
     }

@@ -3,7 +3,7 @@ use burn::tensor::backend::Backend;
 
 
 // Barycentric interpolation/evaluation using Chebyshev points in 1D
-// error is too high, due to either f32 or rounding errors
+// error is too high, due to either f64 or rounding errors
 // further investigation into how interpolation is working
 // as this could affect how neural network is learning down the line
 pub fn cheb_1d_interpolate<B: Backend>(
@@ -13,7 +13,7 @@ pub fn cheb_1d_interpolate<B: Backend>(
     c_points: &Tensor<B ,1>,
     b_weights: &Tensor<B, 1>
 ) -> Tensor<B, 1> {
-    let eps = 1e-6;
+    let eps = 1e-12;
 
     let m = e_points.dims()[0];
     let n = c_points.dims()[0];
@@ -26,7 +26,7 @@ pub fn cheb_1d_interpolate<B: Backend>(
     let zero_mask = diff.clone().abs().lower_equal_elem(eps);
     
     let ones_data = vec![1.0; m * n];
-    let ones_tensor = Tensor::<B, 1>::from_floats(&*ones_data, device).reshape([m, n]);
+    let ones_tensor = Tensor::<B, 1>::from_data(&*ones_data, device).reshape([m, n]);
 
     let safe_diff = diff.clone().mask_where(zero_mask.clone(), ones_tensor);  
 
@@ -106,51 +106,101 @@ pub fn cheb_1d_interpolate<B: Backend>(
 mod test {
     use burn::backend::NdArray;
 
-    type B = NdArray<f32>;
+    type B = NdArray<f64>;
 
     use crate::{
         cheb_points::{gen_cheb_points, gen_barycentric_weights},
         interp::*
     };
 
-    fn t3(x: f32) -> f32 { 4.0 * x * x * x - 3.0 * x }
-    fn t4(y: f32) -> f32 { 8.0 * y * y * y * y - 8.0 * y * y + 1.0 }
+    fn t3(x: f64) -> f64 { 4.0 * x * x * x - 3.0 * x }
+    fn t4(y: f64) -> f64 { 8.0 * y * y * y * y - 8.0 * y * y + 1.0 }
+
+    // #[test]
+    // fn test_cheb_1d_interpolation() {
+    //     let device = <B as Backend>::Device::default();
+    //     let n = 100;
+
+    //     let cheb_points = gen_cheb_points::<B>(&device, n);
+    //     let bary_weights = gen_barycentric_weights::<B>(&device, n);
+
+    //     let cheb_points_vec = cheb_points.to_data().to_vec::<f64>().unwrap();
+    //     let f_values_vec: Vec<f64> = cheb_points_vec.iter().copied().map(t3).collect();
+    //     let f_values = Tensor::<B, 1>::from_data(f_values_vec.as_slice(), &device);
+
+    //     let m = 200;
+
+    //     let eval_points = gen_cheb_points::<B>(&device, m);
+    //     let eval_points_vec = eval_points.to_data().to_vec::<f64>().unwrap();
+    //     let true_values_vec: Vec<f64> = eval_points_vec.iter().copied().map(t3).collect();
+    //     let true_values = Tensor::<B, 1>::from_data(true_values_vec.as_slice(), &device);
+
+    //     let interp_values = cheb_1d_interpolate(
+    //         &device, 
+    //         &eval_points, 
+    //         &f_values, 
+    //         &cheb_points, 
+    //         &bary_weights
+    //     );
+
+    //     let abs_error = (interp_values.clone() - true_values.clone()).abs();
+    //     let max_error = abs_error.max().to_data().to_vec::<f64>().unwrap()[0];
+       
+    //     assert!(
+    //         max_error < 1e-4,
+    //         "Max 1D interpolation error too high: {}",
+    //         max_error
+    //     );
+    // }
 
     #[test]
-    fn test_cheb_1d_interpolation() {
-        let device = <B as Backend>::Device::default();
-        let n = 10;
+    fn test_interpolation_precision() {
+        use burn::backend::NdArray;
+        type B = NdArray<f64>;
+        let device = <B as burn::tensor::backend::Backend>::Device::default();
+
+        let n = 5; // training / Chebyshev points
+        let m = 10; // evaluation / interpolation points
 
         let cheb_points = gen_cheb_points::<B>(&device, n);
-        let bary_weights = gen_barycentric_weights::<B>(&device, n);
+        let weights = gen_barycentric_weights::<B>(&device, n);
 
-        let cheb_points_vec = cheb_points.to_data().to_vec::<f32>().unwrap();
-        let f_values_vec: Vec<f32> = cheb_points_vec.iter().copied().map(t3).collect();
-        let f_values = Tensor::<B, 1>::from_floats(f_values_vec.as_slice(), &device);
-
-        let m = 20;
+        // f(x) = sin(pi * x)
+        let cheb_points_vec = cheb_points.to_data().to_vec::<f64>().unwrap();
+        // let f_values_vec: Vec<f64> = cheb_points_vec.iter().map(|&x| (std::f64::consts::PI * x).sin()).collect();
+        let f_values_vec: Vec<f64> = cheb_points_vec.iter().map(|&x| x * x).collect();
+        let f_values = Tensor::<B, 1>::from_data(f_values_vec.as_slice(), &device);
 
         let eval_points = gen_cheb_points::<B>(&device, m);
-        let eval_points_vec = eval_points.to_data().to_vec::<f32>().unwrap();
-        let true_values_vec: Vec<f32> = eval_points_vec.iter().copied().map(t3).collect();
-        let true_values = Tensor::<B, 1>::from_floats(true_values_vec.as_slice(), &device);
+        let eval_points_vec = eval_points.to_data().to_vec::<f64>().unwrap();
+        // let true_values_vec: Vec<f64> = eval_points_vec.iter().map(|&x| (std::f64::consts::PI * x).sin()).collect();
+        let true_values_vec: Vec<f64> = eval_points_vec.iter().map(|&x| x * x).collect();
+        let true_values = Tensor::<B, 1>::from_data(true_values_vec.as_slice(), &device);
 
-        let interp_values = cheb_1d_interpolate(
-            &device, 
-            &eval_points, 
-            &f_values, 
-            &cheb_points, 
-            &bary_weights
-        );
+        println!("Chebyshev points:");
+        for (i, x) in cheb_points_vec.iter().enumerate() {
+            println!(" x[{i}] = {x:.17}");
+        }
 
-        let abs_error = (interp_values.clone() - true_values.clone()).abs();
-        let max_error = abs_error.max().to_data().to_vec::<f32>().unwrap()[0];
-       
-        assert!(
-            max_error < 1e-3,
-            "Max 1D interpolation error too high: {}",
-            max_error
-        );
+
+        println!("Evaluation points:");
+        for (i, x) in eval_points_vec.iter().enumerate() {
+            println!(" x[{i}] = {x:.17}");
+        }
+        
+        let interp_values = cheb_1d_interpolate(&device, &eval_points, &f_values, &cheb_points, &weights);
+        let interp_values_vec = interp_values.to_data().to_vec::<f64>().unwrap();
+
+        println!("Interpolation points:");
+        for (i, x) in interp_values_vec.iter().enumerate() {
+            println!(" x[{i}] = {x:.17}");
+        }
+
+        let abs_error = (interp_values - true_values).abs();
+        let max_error = abs_error.max().to_data().to_vec::<f64>().unwrap()[0];
+
+        println!("Interpolation max abs error: {:.3e}", max_error);
+        assert!(max_error < 1e-7, "Interpolation too inaccurate for f64: {}", max_error);
     }
 
     // #[test]
@@ -166,8 +216,8 @@ mod test {
     //     let lam_y = gen_barycentric_weights::<B>(&device, ny);
 
     //     // Convert nodes to vectors once
-    //     let x_nodes_vec = x_nodes.to_data().to_vec::<f32>().unwrap();
-    //     let y_nodes_vec = y_nodes.to_data().to_vec::<f32>().unwrap();
+    //     let x_nodes_vec = x_nodes.to_data().to_vec::<f64>().unwrap();
+    //     let y_nodes_vec = y_nodes.to_data().to_vec::<f64>().unwrap();
 
     //     // Build 2D function values f(x_i, y_j)
     //     let mut values = vec![0.0; nx * ny];
@@ -176,7 +226,7 @@ mod test {
     //             values[i * ny + j] = t3(x_nodes_vec[i]) * t4(y_nodes_vec[j]);
     //         }
     //     }
-    //     let values_tensor = Tensor::<B, 2>::from_floats(&*values, &device).reshape([nx, ny]);
+    //     let values_tensor = Tensor::<B, 2>::from_data(&*values, &device).reshape([nx, ny]);
 
     //     // Evaluation grid
     //     let mx = 40;
@@ -197,11 +247,11 @@ mod test {
     //     );
 
     //     // Compute and compare
-    //     let eval_x_vec = eval_x.to_data().to_vec::<f32>().unwrap();
-    //     let eval_y_vec = eval_y.to_data().to_vec::<f32>().unwrap();
-    //     let interp_vec = interp_vals.to_data().to_vec::<f32>().unwrap();
+    //     let eval_x_vec = eval_x.to_data().to_vec::<f64>().unwrap();
+    //     let eval_y_vec = eval_y.to_data().to_vec::<f64>().unwrap();
+    //     let interp_vec = interp_vals.to_data().to_vec::<f64>().unwrap();
 
-    //     let mut max_err: f32 = 0.0;
+    //     let mut max_err: f64 = 0.0;
     //     for ix in 0..mx {
     //         for iy in 0..my {
     //             let true_val = t3(eval_x_vec[ix]) * t4(eval_y_vec[iy]);

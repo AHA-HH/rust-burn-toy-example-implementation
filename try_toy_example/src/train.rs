@@ -13,7 +13,7 @@ use crate::utils::*;
 
 // Function to force a function to learn, in this case u(x) = sin(pi * x)
 pub fn source_function<B: Backend>(x: &Tensor<B, 1>) -> Tensor<B, 1> {
-    let pi = std::f32::consts::PI;
+    let pi = std::f64::consts::PI;
     let pi_sq = pi * pi;
     let sin_pix = x.clone().mul_scalar(pi).sin();
     sin_pix.mul_scalar(pi_sq)
@@ -73,7 +73,7 @@ pub fn train_model<B: Backend> (
     n: usize,
     m: usize,
     hidden_layer_size: usize,
-    learning_rate: f32, 
+    learning_rate: f64, 
 ) {
     let x_cheb = gen_cheb_points::<Autodiff<B>>(&device, n);
     let b_weights = gen_barycentric_weights::<Autodiff<B>>(&device, n);
@@ -116,7 +116,7 @@ pub fn train_model<B: Backend> (
         );
 
         if epoch % 100 == 0 {
-            let loss_value = loss.to_data().to_vec::<f32>().unwrap()[0];
+            let loss_value = loss.to_data().to_vec::<f64>().unwrap()[0];
             println!("Epoch {:>5} Loss = {:.6}", epoch, loss_value);
         }
         // println!("Step {}: Loss: {:.4}", epoch + 1, loss.to_data());
@@ -124,19 +124,19 @@ pub fn train_model<B: Backend> (
 
     println!("Training Finished");
     println!("Testing Started");
-    let test_x: Vec<f32> = (0..100)
-    .map(|i| -1.0 + 2.0 * (i as f32 / 99.0))
+    let test_x: Vec<f64> = (0..100)
+    .map(|i| -1.0 + 2.0 * (i as f64 / 99.0))
     .collect();
 
-    let test_input = Tensor::<Autodiff<B>, 1>::from_floats(&*test_x, &device);
+    let test_input = Tensor::<Autodiff<B>, 1>::from_data(&*test_x, &device);
 
     let pred_y = model.forward(test_input.clone());
 
     println!("x\ty_true\ty_pred");
-    let pred_data = pred_y.to_data().to_vec::<f32>().unwrap();
+    let pred_data = pred_y.to_data().to_vec::<f64>().unwrap();
 
     for (x, y_pred) in test_x.iter().zip(pred_data.iter()) {
-        let y_true = (std::f32::consts::PI * x).sin();
+        let y_true = (std::f64::consts::PI * x).sin();
         println!("{:.3}\t{:.3}\t{:.3}", x, y_true, y_pred);
     }
     println!("Testing Finished")
@@ -154,7 +154,7 @@ mod tests {
 
     #[test]
     fn test_source_function() {
-        type B = NdArray<f32>;
+        type B = NdArray<f64>;
         let device = <B as Backend>::Device::default();
 
         // Define some random test points
@@ -162,13 +162,13 @@ mod tests {
         let x_eval = gen_cheb_points::<B>(&device, m);
 
         // Compute true values functionally
-        let f_true = source_function::<B>(&x_eval).to_data().to_vec::<f32>().unwrap();
-        let x_vals = x_eval.to_data().to_vec::<f32>().unwrap();
+        let f_true = source_function::<B>(&x_eval).to_data().to_vec::<f64>().unwrap();
+        let x_vals = x_eval.to_data().to_vec::<f64>().unwrap();
 
         // Compute true values manually
-        let pi = std::f32::consts::PI;
+        let pi = std::f64::consts::PI;
         let pi_sq = pi * pi;
-        let f_manual: Vec<f32> = x_vals
+        let f_manual: Vec<f64> = x_vals
             .iter()
             .map(|&x| pi_sq * (pi * x).sin())
             .collect();
@@ -188,7 +188,7 @@ mod tests {
 
     #[test]
     fn test_residual_calculation() {
-        type B = NdArray<f32>;
+        type B = NdArray<f64>;
         let device = <B as Backend>::Device::default();
 
         let n = 20;
@@ -219,14 +219,14 @@ mod tests {
         assert_eq!(shape, [m], "Residual tensor shape should be [m], got {:?}", shape);
 
         // No NaN or Inf values
-        let vals = residuals.to_data().to_vec::<f32>().unwrap();
+        let vals = residuals.to_data().to_vec::<f64>().unwrap();
         assert!(
             vals.iter().all(|&v| v.is_finite()),
             "Residual tensor contains NaN or Inf"
         );
 
         // Ensure non-zero output
-        let max_val = vals.iter().fold(0.0_f32, |acc, &v| acc.max(v.abs()));
+        let max_val = vals.iter().fold(0.0_f64, |acc, &v| acc.max(v.abs()));
         assert!(
             max_val > 0.0,
             "Residual tensor unexpectedly all zeros — interpolation may have failed"
@@ -237,7 +237,7 @@ mod tests {
 
     #[test]
     fn test_loss_calculation() {
-        type B = NdArray<f32>;
+        type B = NdArray<f64>;
         let device = <B as Backend>::Device::default();
 
         let n = 20;
@@ -266,7 +266,7 @@ mod tests {
 
         let loss = compute_loss::<B>(&residuals, &weights);
 
-        let loss_val = loss.to_data().to_vec::<f32>().unwrap()[0];
+        let loss_val = loss.to_data().to_vec::<f64>().unwrap()[0];
 
          assert_eq!(
         loss.dims(),
