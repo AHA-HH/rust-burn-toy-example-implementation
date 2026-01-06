@@ -3,6 +3,7 @@ mod interp;
 mod utils;
 mod model;
 mod train;
+mod spectral;
 
 
 // use cheb_points::*;
@@ -10,12 +11,11 @@ mod train;
 use train::*;
 
 use burn::tensor::backend::Backend;     // Backend trait
-use burn_autodiff::Autodiff;            // Autodiff tensor
-// use burn::optim::{Adam, AdamConfig, GradientsParams, Optimizer, SgdConfig};    // optimizer
 use burn::backend::NdArray;             // NdArray backend
+// use burn_autodiff::Autodiff;            // Autodiff tensor
 
 // Choose a concrete backend type parameter
-type B = Autodiff<NdArray>;             // for CPU
+// type B = Autodiff<NdArray>;             // for CPU
 
 fn main() {
     type B = NdArray<f64>;
