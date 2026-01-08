@@ -4,10 +4,11 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-burn = {version = "0.18.0", features = ["ndarray", "wgpu"]}
-burn-autodiff = "0.18.0"
-burn-ndarray = "0.18.0"
-burn-wgpu = "0.18.0"
+burn = {version = "0.19.0", features = ["ndarray", "wgpu"]}
+# burn = "0.19.0"
+burn-autodiff = "0.19.0"
+# burn-ndarray = "0.19.0"
+# burn-wgpu = "0.19.0"
 
 rand = "0.9"
 rand_chacha = "0.9"
@@ -17,7 +18,10 @@ ndarray = "0.17.1"
 
 scirs2-fft = "0.1.1"
 
-plotters = "0.3.7"
+# plotters = "0.3.7"
+
+# rlst = {version = "0.5.0", features = ["fftw", "fftw_source"]}
+sciml-rs = { git = "https://codeberg.org/sciml-rs/sciml-rs.git", branch = "burn_derivatives" }
 
 [dev-dependencies]
 approx = "0.5"

@@ -177,29 +177,29 @@ mod test {
         let true_values_vec: Vec<f64> = eval_points_vec.iter().map(|&x| x * x).collect();
         let true_values = Tensor::<B, 1>::from_data(true_values_vec.as_slice(), &device);
 
-        println!("Chebyshev points:");
-        for (i, x) in cheb_points_vec.iter().enumerate() {
-            println!(" x[{i}] = {x:.17}");
-        }
+        // println!("Chebyshev points:");
+        // for (i, x) in cheb_points_vec.iter().enumerate() {
+        //     println!(" x[{i}] = {x:.17}");
+        // }
 
 
-        println!("Evaluation points:");
-        for (i, x) in eval_points_vec.iter().enumerate() {
-            println!(" x[{i}] = {x:.17}");
-        }
+        // println!("Evaluation points:");
+        // for (i, x) in eval_points_vec.iter().enumerate() {
+        //     println!(" x[{i}] = {x:.17}");
+        // }
         
         let interp_values = cheb_1d_interpolate(&device, &eval_points, &f_values, &cheb_points, &weights);
         let interp_values_vec = interp_values.to_data().to_vec::<f64>().unwrap();
 
-        println!("Interpolation points:");
-        for (i, x) in interp_values_vec.iter().enumerate() {
-            println!(" x[{i}] = {x:.17}");
-        }
+        // println!("Interpolation points:");
+        // for (i, x) in interp_values_vec.iter().enumerate() {
+        //     println!(" x[{i}] = {x:.17}");
+        // }
 
         let abs_error = (interp_values - true_values).abs();
         let max_error = abs_error.max().to_data().to_vec::<f64>().unwrap()[0];
 
-        println!("Interpolation max abs error: {:.3e}", max_error);
+        // println!("Interpolation max abs error: {:.3e}", max_error);
         assert!(max_error < 1e-7, "Interpolation too inaccurate for f64: {}", max_error);
     }
 

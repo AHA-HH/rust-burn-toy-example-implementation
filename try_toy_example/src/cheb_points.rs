@@ -10,10 +10,8 @@ pub fn gen_cheb_points<B: Backend>(device: &B::Device, n: usize) -> Tensor<B, 1>
     })
     .collect();
 
-    // println!("Vector {:#?}", points);
-
     let tensor = Tensor::<B, 1>::from_data(points.as_slice(), device);
-    // println!("Tensor: {:#?}", tensor);
+
     tensor
 }
 
@@ -116,7 +114,6 @@ mod tests {
         let points_vec = points.to_data().to_vec::<f64>().unwrap();
 
         for (j, &x_j) in points_vec.iter().enumerate() {
-            println!(" x_{} = {:.17}", j, x_j);
             let expected = ((n - 1 - j) as f64 * std::f64::consts::PI / (n - 1) as f64).cos();
             assert_relative_eq!(x_j, expected, epsilon = 1e-6);
         }

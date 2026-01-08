@@ -1,6 +1,8 @@
 use burn::tensor::Tensor;
 use burn::tensor::backend::Backend;
 use scirs2_fft::{dct, idct, DCTType};
+use sciml_rs::chebychev::Derivative1D;
+
 
 // Function to carry out the DCT of Type II in 1D, from values to coefficients
 pub fn dct_1d<B: Backend>(
@@ -15,6 +17,7 @@ pub fn dct_1d<B: Backend>(
 
     // Convert back to a tensor
     Tensor::<B, 1>::from_data(&*coefficients_vec, device)
+
 }
 
 // Function to carry out the inverse DCT of Type II in 1D, from coefficients to values
@@ -37,7 +40,7 @@ pub fn cheb_derivative_recursion<B: Backend>(
     coefficients: &Tensor<B, 1>,
     device: &B::Device,
 ) -> Tensor<B, 1> {
-
+    coefficients.clone().chebychev_derivative_1d()
 }
 
 #[cfg(test)]
@@ -104,6 +107,23 @@ mod test {
         }
     }
 
+    // #[test]
+    // fn test_sciml_derivative_import() {
+    //     let device = <B as Backend>::Device::default();
+
+    //     let test_coeffs = Tensor::<B, 1>::from_data([1, 1, 1].as_slice(), &device);
+
+    //     let deriv_1_tensor = cheb_derivative_recursion(&test_coeffs, &device);
+
+    //     let deriv_1 = deriv_1_tensor.to_data().to_vec::<f64>().unwrap();
+
+    //     let expected = vec![1.0, 4.0, 0.0];
+
+    //     for (i, &val) in expected.iter().enumerate() {
+    //         assert!((val - deriv_1[i]).abs() < 1e-14);
+    //     }        
+    // }
+
     #[test]
     fn test_derivative_recursion() {
         let device = <B as Backend>::Device::default();
@@ -133,9 +153,9 @@ mod test {
 
         let computed_deriv_1 = calculated.to_data().to_vec::<f64>().unwrap();
 
-        println!("Vector {:#?}", expected_deriv_1);
+        // println!("Vector {:#?}", expected_deriv_1);
 
-        println!("Vector {:#?}", computed_deriv_1);
+        // println!("Vector {:#?}", computed_deriv_1);
 
         // Compare first derivative
         for (i, &val) in expected_deriv_1.iter().enumerate() {
@@ -143,8 +163,6 @@ mod test {
         }
 
         // Compute coefficients
-
-    
 
     }
 

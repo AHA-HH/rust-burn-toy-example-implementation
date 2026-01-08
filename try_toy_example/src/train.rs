@@ -232,7 +232,7 @@ mod tests {
             "Residual tensor unexpectedly all zeros — interpolation may have failed"
         );
 
-        println!("Residual interpolation shape: {:?}, max |val| = {:.3e}", shape, max_val);
+        // println!("Residual interpolation shape: {:?}, max |val| = {:.3e}", shape, max_val);
     }
 
     #[test]
@@ -289,9 +289,9 @@ mod tests {
         loss_val
     );
 
-    println!(
-        "Loss test passed: Loss = {:.6} (m={}, n={})",
-        loss_val, m, n
-    );
+    // println!(
+    //     "Loss test passed: Loss = {:.6} (m={}, n={})",
+    //     loss_val, m, n
+    // );
     }
 }
